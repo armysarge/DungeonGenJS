@@ -11,7 +11,7 @@
 
 [![GitHub issues](https://img.shields.io/github/issues/armysarge/MythicForge)](https://github.com/armysarge/DungeonGeneratorJS/issues)
 
-# DungeonGeneratorJS
+# DungeonGenJS
 
 An object-oriented JavaScript library for procedurally generating rich, customizable dungeons with gameplay elements.
 
