@@ -57,7 +57,7 @@ An object-oriented JavaScript library for procedurally generating rich, customiz
 
 ## Demo
 
-[Live Demo](https://armysarge.co.za/DungeonGeneratorJS/index.html) - Try the generator in your browser!
+[Live Demo](https://armysarge.co.za/DungeonGenJS/index.html) - Try the generator in your browser!
 
 ![Dungeon 2D Example](2dscreenshot.jpg)
 *Example of a generated dungeon with rooms, corridors, and entities*
