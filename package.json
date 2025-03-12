@@ -1,0 +1,19 @@
+{
+  "name": "DungeonGeneratorJS",
+  "version": "0.0.1",
+  "description": "DungeonGeneratorJS is a robust, object-oriented JavaScript library for procedural dungeon generation.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "dungeon",
+    "generator",
+    "js",
+    "javascript",
+    "game",
+    "rpg"
+  ],
+  "author": "Shaun Scholtz (Armysarge)",
+  "license": "MIT"
+}

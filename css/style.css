@@ -1,0 +1,45 @@
+body {
+    margin: 0;
+    overflow: hidden;
+    font-family: Arial, sans-serif;
+}
+
+canvas {
+    display: block;
+}
+
+#info {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: white;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 10px;
+    border-radius: 5px;
+}
+
+#controls {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    color: white;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 10px;
+    border-radius: 5px;
+}
+
+div.wall{
+    background-color: #000;
+    width: 20px;
+    height: 20px;
+    display: inline-block;
+    transition: background-color 0.3s;
+}
+
+div.floor{
+    background-color: #fff;
+    width: 20px;
+    height: 20px;
+    display: inline-block;
+    transition: background-color 0.3s;
+}
