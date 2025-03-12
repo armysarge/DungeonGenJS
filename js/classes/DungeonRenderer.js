@@ -139,11 +139,29 @@ class DungeonRenderer{
             return { ctx, tileSize };
         }
 
-        // Ensure canvas is large enough for the dungeon
-        canvas.width = this.dungeon.width * tileSize;
-        canvas.height = this.dungeon.height * tileSize;
+        // Handle high DPI displays for sharper rendering
+        const devicePixelRatio = window.devicePixelRatio || 1;
+            
+        // Get the CSS size of the canvas
+        const displayWidth = this.dungeon.width * tileSize;
+        const displayHeight = this.dungeon.height * tileSize;
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // Set the canvas size in CSS pixels
+        canvas.style.width = `${displayWidth}px`;
+        canvas.style.height = `${displayHeight}px`;
+
+        // Increase canvas resolution based on device pixel ratio
+        canvas.width = Math.floor(displayWidth * devicePixelRatio);
+        canvas.height = Math.floor(displayHeight * devicePixelRatio);
+
+        // Scale the context to ensure correct drawing
+        ctx.scale(devicePixelRatio, devicePixelRatio);
+
+        // Enable image smoothing options for better quality
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
+        ctx.clearRect(0, 0, displayWidth, displayHeight);
 
         // First pass: draw all tiles
         for (let i = 0; i < this.dungeon.width; i++) {
