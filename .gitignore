@@ -1,7 +1,6 @@
 backup_*
 *.dev.js
 dist
-.htaccess
 
 # Logs
 *.log
