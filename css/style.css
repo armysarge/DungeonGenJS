@@ -64,6 +64,21 @@ div.floor{
     z-index: 1000;
 }
 
+.wip-banner {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    width: 100px;
+    background-color: #35353596;
+    color: #ffffff;
+    text-align: center;
+    border-radius: 5px;
+    padding: 10px;
+    font-weight: bold;
+    z-index: 1000;
+    transition: opacity 0.3s ease;
+}
+
 .github-link:hover {
     background-color: #2c3136;
 }
