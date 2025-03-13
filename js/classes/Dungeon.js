@@ -148,6 +148,7 @@ class Dungeon {
 
         this.placeRooms("BSP");
         this.placeCorridors();
+        this.addCorridorVariety();
         this.placeDoors(); // Add doors after corridors are placed
         this.placeChests(); // Add chest placement after doors
         this.placeCreatures(); // Add creature placement after chests
@@ -1351,6 +1352,290 @@ class Dungeon {
         }
     }
 
+    /**
+     * Adds variety to long straight corridors by adding alcoves, rest areas and decorations.
+     * Should be called after corridor placement but before door placement.
+     */
+    addCorridorVariety() {
+        // First identify all long straight corridors
+        for (let x = 0; x < this.width; x++) {
+            for (let y = 0; y < this.height; y++) {
+                if (this.isLongStraightCorridor(x, y) && this.random() < 0.5) { // 50% chance to add variety
+                    const orientation = this.getCorridorOrientation(x, y);
+                    if (orientation === 'horizontal') {
+                        this.addVarietyToHorizontalCorridor(x, y);
+                    } else if (orientation === 'vertical') {
+                        this.addVarietyToVerticalCorridor(x, y);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Checks if a position is part of a long straight corridor.
+     * @param {number} x - Starting x coordinate
+     * @param {number} y - Starting y coordinate
+     * @returns {boolean} True if position is part of a long corridor
+     */
+    isLongStraightCorridor(x, y) {
+        if (!this.isValidPosition(x, y) ||
+            this.tiles[x][y].type !== 'floor' ||
+            this.isPartOfRoom(x, y)) {
+            return false;
+        }
+
+        // Check horizontal corridor
+        let horizontalLength = 1;
+        let dx = 1;
+        while (this.isValidPosition(x + dx, y) &&
+            this.tiles[x + dx][y].type === 'floor' &&
+            !this.isPartOfRoom(x + dx, y)) {
+            horizontalLength++;
+            dx++;
+        }
+        dx = -1;
+        while (this.isValidPosition(x + dx, y) &&
+            this.tiles[x + dx][y].type === 'floor' &&
+            !this.isPartOfRoom(x + dx, y)) {
+            horizontalLength++;
+            dx--;
+        }
+
+        // Check vertical corridor
+        let verticalLength = 1;
+        let dy = 1;
+        while (this.isValidPosition(x, y + dy) &&
+            this.tiles[x][y + dy].type === 'floor' &&
+            !this.isPartOfRoom(x, y + dy)) {
+            verticalLength++;
+            dy++;
+        }
+        dy = -1;
+        while (this.isValidPosition(x, y + dy) &&
+            this.tiles[x][y + dy].type === 'floor' &&
+            !this.isPartOfRoom(x, y + dy)) {
+            verticalLength++;
+            dy--;
+        }
+
+        return horizontalLength >= 6 || verticalLength >= 6;
+    }
+
+    /**
+     * Determines if a corridor is horizontal or vertical.
+     * @param {number} x - X coordinate to check
+     * @param {number} y - Y coordinate to check
+     * @returns {string} 'horizontal', 'vertical', or null
+     */
+    getCorridorOrientation(x, y) {
+        let horizontalLength = 0;
+        let verticalLength = 0;
+
+        // Count horizontal corridor tiles
+        let dx = 0;
+        while (this.isValidPosition(x + dx, y) &&
+            this.tiles[x + dx][y].type === 'floor' &&
+            !this.isPartOfRoom(x + dx, y)) {
+            horizontalLength++;
+            dx++;
+        }
+        dx = -1;
+        while (this.isValidPosition(x + dx, y) &&
+            this.tiles[x + dx][y].type === 'floor' &&
+            !this.isPartOfRoom(x + dx, y)) {
+            horizontalLength++;
+            dx--;
+        }
+
+        // Count vertical corridor tiles
+        let dy = 0;
+        while (this.isValidPosition(x, y + dy) &&
+            this.tiles[x][y + dy].type === 'floor' &&
+            !this.isPartOfRoom(x, y + dy)) {
+            verticalLength++;
+            dy++;
+        }
+        dy = -1;
+        while (this.isValidPosition(x, y + dy) &&
+            this.tiles[x][y + dy].type === 'floor' &&
+            !this.isPartOfRoom(x, y + dy)) {
+            verticalLength++;
+            dy--;
+        }
+
+        if (horizontalLength > verticalLength) return 'horizontal';
+        if (verticalLength > horizontalLength) return 'vertical';
+        return null;
+    }
+
+    /**
+     * Adds variety to a horizontal corridor.
+     * @param {number} x - Starting x coordinate
+     * @param {number} y - Starting y coordinate
+     */
+    addVarietyToHorizontalCorridor(x, y) {
+        // Find corridor length
+        let length = 0;
+        while (this.isValidPosition(x + length, y) &&
+            this.tiles[x + length][y].type === 'floor' &&
+            !this.isPartOfRoom(x + length, y)) {
+            length++;
+        }
+
+        // Add features every 3-4 tiles
+        for (let i = 2; i < length - 2; i += 3) {
+            if (this.random() < 0.4) { // 40% chance per position
+                const featureType = this.random();
+
+                if (featureType < 0.4) { // Alcove
+                    this.addAlcove(x + i, y, 'horizontal');
+                } else if (featureType < 0.7) { // Rest area
+                    this.addRestArea(x + i, y, 'horizontal');
+                } else { // Decoration
+                    this.addDecoration(x + i, y);
+                }
+            }
+        }
+    }
+
+    /**
+     * Adds variety to a vertical corridor.
+     * @param {number} x - Starting x coordinate
+     * @param {number} y - Starting y coordinate
+     */
+    addVarietyToVerticalCorridor(x, y) {
+        // Find corridor length
+        let length = 0;
+        while (this.isValidPosition(x, y + length) &&
+            this.tiles[x][y + length].type === 'floor' &&
+            !this.isPartOfRoom(x, y + length)) {
+            length++;
+        }
+
+        // Add features every 3-4 tiles
+        for (let i = 2; i < length - 2; i += 3) {
+            if (this.random() < 0.4) { // 40% chance per position
+                const featureType = this.random();
+
+                if (featureType < 0.4) { // Alcove
+                    this.addAlcove(x, y + i, 'vertical');
+                } else if (featureType < 0.7) { // Rest area
+                    this.addRestArea(x, y + i, 'vertical');
+                } else { // Decoration
+                    this.addDecoration(x, y + i);
+                }
+            }
+        }
+    }
+
+    /**
+     * Adds an alcove to a corridor.
+     * @param {number} x - X coordinate
+     * @param {number} y - Y coordinate
+     * @param {string} orientation - 'horizontal' or 'vertical'
+     */
+    addAlcove(x, y, orientation) {
+        if (orientation === 'horizontal') {
+            // Randomly choose top or bottom side
+            const addToTop = this.random() < 0.5;
+
+            if (addToTop) {
+                // Try adding alcove to top
+                if (this.isValidPosition(x, y - 1) && this.tiles[x][y - 1].type === 'wall') {
+                    this.tiles[x][y - 1] = new Tile('floor', this);
+                    if (this.random() < 0.3) this.addAlcoveContent(x, y - 1);
+                }
+            } else {
+                // Try adding alcove to bottom
+                if (this.isValidPosition(x, y + 1) && this.tiles[x][y + 1].type === 'wall') {
+                    this.tiles[x][y + 1] = new Tile('floor', this);
+                    if (this.random() < 0.3) this.addAlcoveContent(x, y + 1);
+                }
+            }
+        } else {
+            // Randomly choose left or right side
+            const addToLeft = this.random() < 0.5;
+
+            if (addToLeft) {
+                // Try adding alcove to left
+                if (this.isValidPosition(x - 1, y) && this.tiles[x - 1][y].type === 'wall') {
+                    this.tiles[x - 1][y] = new Tile('floor', this);
+                    if (this.random() < 0.3) this.addAlcoveContent(x - 1, y);
+                }
+            } else {
+                // Try adding alcove to right
+                if (this.isValidPosition(x + 1, y) && this.tiles[x + 1][y].type === 'wall') {
+                    this.tiles[x + 1][y] = new Tile('floor', this);
+                    if (this.random() < 0.3) this.addAlcoveContent(x + 1, y);
+                }
+            }
+        }
+    }
+
+    /**
+     * Adds content to an alcove.
+     * @param {number} x - X coordinate
+     * @param {number} y - Y coordinate
+     */
+    addAlcoveContent(x, y) {
+        const roll = this.random();
+        if (roll < 0.3) {
+            // Add a chest
+            const chest = new Chest(this, "", "common", null, x, y);
+            this.tiles[x][y].obj.item = chest;
+            this.chests.push(chest);
+        } else if (roll < 0.6) {
+            // Add a creature
+            this.placeCreatureAt(x, y, null);
+        }
+    }
+
+    /**
+     * Adds a rest area to a corridor.
+     * @param {number} x - X coordinate
+     * @param {number} y - Y coordinate
+     * @param {string} orientation - 'horizontal' or 'vertical'
+     */
+    addRestArea(x, y, orientation) {
+        // Create a 2x2 or 3x3 open area
+        for (let dx = -1; dx <= 1; dx++) {
+            for (let dy = -1; dy <= 1; dy++) {
+                if (this.isValidPosition(x + dx, y + dy) &&
+                    this.tiles[x + dx][y + dy].type === 'wall') {
+                    this.tiles[x + dx][y + dy] = new Tile('floor', this);
+                }
+            }
+        }
+
+        // Maybe add some content
+        if (this.random() < 0.3) {
+            this.placeCreatureAt(x, y, null);
+        }
+    }
+
+    /**
+     * Adds decorative elements to a corridor.
+     * @param {number} x - X coordinate
+     * @param {number} y - Y coordinate
+     */
+    addDecoration(x, y) {
+        const roll = this.random();
+        if (roll < 0.3) {
+            // Add a pillar
+            this.tiles[x][y].type = 'pillar';
+        } else if (roll < 0.6) {
+            // Add debris
+            this.tiles[x][y].obj.debris = true;
+        } else {
+            // Add trap
+            this.tiles[x][y].obj.trap = {
+                type: ['spike', 'poison', 'magic'][Math.floor(this.random() * 3)],
+                detected: false
+            };
+        }
+    }
+
     //region Door Placement
     /**
      * Places doors throughout the dungeon at valid positions.
@@ -1809,6 +2094,9 @@ class Dungeon {
     placeChests() {
         // Determine how many chests to place (1 per 3 rooms)
         const numChests = Math.max(1, Math.floor(this.rooms.length / 3));
+
+        // minus existing chests
+        const existingChests = this.chests.length;
 
         if (this.debug)
             console.log(`Placing ${numChests} chests in the dungeon...`);
