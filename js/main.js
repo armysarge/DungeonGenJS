@@ -8,7 +8,8 @@ const dungeonRenderer = new DungeonRenderer(sceneManager, dungeon);
 
 function init() {
     dungeon.generateDungeon(); // Generate the dungeon layout
-    dungeonRenderer.render('2D'); // Specify 2D rendering explicitly
+    dungeonRenderer.createDebugControls(); // Add debug controls
+    dungeonRenderer.render2D();
 }
 
 function animate() {
@@ -22,5 +23,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 Object.assign(globalThis, {
-    dungeon
+    dungeon,
+    dungeonRenderer
 });

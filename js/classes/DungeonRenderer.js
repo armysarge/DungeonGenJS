@@ -1,4 +1,8 @@
 import Chest from './Chest.js';
+import * as THREE from '../threeJS/Three.js';
+import { OrbitControls } from "../threeJS/examples/jsm/controls/OrbitControls.js";
+import { PointerLockControls } from "../threeJS/examples/jsm/controls/PointerLockControls.js";
+import { EXRLoader } from '../threeJS/examples/jsm/loaders/EXRLoader.js';
 
 /**
  * A class responsible for rendering the dungeon and managing UI elements.
@@ -25,8 +29,9 @@ class DungeonRenderer{
     constructor(sceneManager, dungeon) {
         this.sceneManager = sceneManager;
         this.dungeon = dungeon;
-
-        // Create UI elements when renderer is initialized
+        this.movePlayer = null;
+        this.offsetX = -this.dungeon.width / 2;  // Add this line
+        this.offsetZ = -this.dungeon.height / 2;  // Add this line
         this.createUIElements();
     }
 
@@ -88,23 +93,6 @@ class DungeonRenderer{
     }
 
     /**
-     * Renders the dungeon based on the specified type.
-     * @param {string} type - The type of rendering ('3D' for three.js 3D rendering, any other value for 2D rendering)
-     * @method
-     * @memberof DungeonRenderer
-     */
-    render(type) {
-        // render the dungeon in 3D
-        if (type === '3D') {
-            //use three.js to render the dungeon in 3D
-            this.render3D();
-        } else {
-            // render the dungeon in 2D
-            this.render2D();
-        }
-    }
-
-    /**
      * Renders the dungeon in 2D on an HTML canvas element.
      * @param {boolean} [preserveCanvas=false] - If true, skips redrawing the canvas and returns current context
      * @returns {Object} Object containing the canvas context and tile size
@@ -130,9 +118,14 @@ class DungeonRenderer{
      */
     render2D(preserveCanvas = false) {
         //render 2D on canvas
-        const canvas = document.getElementById('dungeon-container');
+        if(document.querySelector('#minimap'))
+            document.querySelector('#minimap').remove(); // Remove minimap if it exists
+        if(document.querySelector('canvas[data-engine]'))
+        document.querySelector('canvas[data-engine]').style = "display: none;";
+        const canvas = document.getElementById("dungeon-container-2d");
         const ctx = canvas.getContext('2d');
         const tileSize = 10;
+        canvas.style = "display: block;";
 
         // If preserveCanvas is true, we'll skip the redraw
         if (preserveCanvas) {
@@ -141,7 +134,7 @@ class DungeonRenderer{
 
         // Handle high DPI displays for sharper rendering
         const devicePixelRatio = window.devicePixelRatio || 1;
-            
+
         // Get the CSS size of the canvas
         const displayWidth = this.dungeon.width * tileSize;
         const displayHeight = this.dungeon.height * tileSize;
@@ -456,139 +449,625 @@ class DungeonRenderer{
         return { ctx, tileSize };
     }
 
-    /**
-     * Renders the dungeon in a 3D environment using Three.js library.
-     * @method render3D
-     * @memberof DungeonRenderer
-     * @instance
-     * @returns {void}
-     */
-    render3D() {
+    render3DDemoTest() {
         // Clear and set up the scene
         this.sceneManager.createScene();
 
-        // Create materials
-        const wallMaterial = new THREE.MeshPhongMaterial({ color: 0x808080 });
-        const floorMaterial = new THREE.MeshPhongMaterial({ color: 0x505050 });
-        const doorMaterial = new THREE.MeshPhongMaterial({ color: 0x8b4513 });
-        const stairsMaterial = new THREE.MeshPhongMaterial({ color: 0x696969 });
-        const chestMaterial = new THREE.MeshPhongMaterial({ color: 0xcd853f });
-        const creatureMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+        // Set scene background color
+        this.sceneManager.scene.background = new THREE.Color(0x333333);
 
-        // Create geometries
-        const wallGeometry = new THREE.BoxGeometry(1, 2, 1);
-        const floorGeometry = new THREE.BoxGeometry(1, 0.1, 1);
-        const doorGeometry = new THREE.BoxGeometry(0.2, 1.5, 1);
-        const chestGeometry = new THREE.BoxGeometry(0.6, 0.4, 0.4);
-        const creatureGeometry = new THREE.SphereGeometry(0.3, 32, 32);
+        // Add lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(5, 5, 5);
+        this.sceneManager.scene.add(ambientLight);
+        this.sceneManager.scene.add(directionalLight);
 
-        // Center the dungeon
-        const offsetX = -this.dungeon.width / 2;
-        const offsetZ = -this.dungeon.height / 2;
+        // Create a cube with standard material for better lighting
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const material = new THREE.MeshStandardMaterial({
+            color: 0x00ff00,
+            metalness: 0.1,
+            roughness: 0.5
+        });
+        const cube = new THREE.Mesh(geometry, material);
 
-        // Render each tile
-        for (let x = 0; x < this.dungeon.width; x++) {
-            for (let z = 0; z < this.dungeon.height; z++) {
-                const tile = this.dungeon.tiles[x][z];
-                const posX = x + offsetX;
-                const posZ = z + offsetZ;
+        // Enable shadows
+        cube.castShadow = true;
+        cube.receiveShadow = true;
+        directionalLight.castShadow = true;
 
-                // Add floor for all non-wall tiles
-                if (tile.type !== 'wall') {
-                    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-                    floor.position.set(posX, 0, posZ);
-                    this.sceneManager.scene.add(floor);
-                }
+        // Position the cube
+        cube.position.set(0, 0, 0);
+        this.sceneManager.scene.add(cube);
 
-                switch (tile.type) {
-                    case 'wall':
-                        const wall = new THREE.Mesh(wallGeometry, wallMaterial);
-                        wall.position.set(posX, 1, posZ);
-                        this.sceneManager.scene.add(wall);
-                        break;
+        // Position camera
+        this.sceneManager.camera.position.set(3, 2, 5);
+        this.sceneManager.camera.lookAt(0, 0, 0);
 
-                    case 'door':
-                        const door = new THREE.Mesh(doorGeometry, doorMaterial);
-                        door.position.set(posX, 0.75, posZ);
+        // Configure renderer
+        this.sceneManager.renderer.shadowMap.enabled = true;
+        this.sceneManager.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        this.sceneManager.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.sceneManager.renderer.setPixelRatio(window.devicePixelRatio);
 
-                        // Rotate door based on facing direction
-                        if (tile.obj.facing === 'east' || tile.obj.facing === 'west') {
-                            door.rotation.y = Math.PI / 2;
+        // Add orbit controls
+        const controls = new OrbitControls(
+            this.sceneManager.camera,
+            this.sceneManager.renderer.domElement
+        );
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.minDistance = 3;
+        controls.maxDistance = 10;
+
+        // Animation loop
+        const animate = () => {
+            requestAnimationFrame(animate);
+            cube.rotation.x += 0.01;
+            cube.rotation.y += 0.01;
+            controls.update();
+            this.sceneManager.renderer.render(
+                this.sceneManager.scene,
+                this.sceneManager.camera
+            );
+        };
+        animate();
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            this.sceneManager.camera.aspect = window.innerWidth / window.innerHeight;
+            this.sceneManager.camera.updateProjectionMatrix();
+            this.sceneManager.renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    }
+
+    render3D(worldType = 'underdark', controlType = 'debug') {
+        return new Promise((resolve) => {
+            document.getElementById("dungeon-container-2d").style = "display: none;";
+            this.sceneManager.createScene();
+
+            this.sceneManager.renderer.setSize(window.innerWidth, window.innerHeight);
+            this.sceneManager.renderer.domElement.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: 1;
+            `;
+
+            // Add window resize handler
+            const onWindowResize = () => {
+                this.sceneManager.camera.aspect = window.innerWidth / window.innerHeight;
+                this.sceneManager.camera.updateProjectionMatrix();
+                this.sceneManager.renderer.setSize(window.innerWidth, window.innerHeight);
+            };
+            window.addEventListener('resize', onWindowResize);
+
+            // Add immediate lighting for visibility
+            const defaultLight = new THREE.AmbientLight(0xffffff, 0.5);
+            this.sceneManager.scene.add(defaultLight);
+
+            // Create materials with improved lighting
+            const wallMaterial = new THREE.MeshStandardMaterial({
+                color: worldType === 'underdark' ? 0x404040 : 0x808080,
+                roughness: 0.9,
+                metalness: 0.1
+            });
+
+            const floorMaterial = new THREE.MeshStandardMaterial({
+                color: worldType === 'underdark' ? 0x2a2a2a : 0x505050,
+                roughness: 0.8,
+                metalness: 0.1
+            });
+
+            const roofMaterial = new THREE.MeshStandardMaterial({
+                color: 0x333333,
+                roughness: 0.9,
+                metalness: 0.1
+            });
+
+            // Center the dungeon
+            const offsetX = -this.dungeon.width / 2;
+            const offsetZ = -this.dungeon.height / 2;
+
+            // Setup camera and controls based on controlType
+            const cameraDistance = Math.max(this.dungeon.width, this.dungeon.height) * 1.5;
+            let controls;
+
+            switch(controlType) {
+                case 'firstperson':
+                    // Set initial camera position to player start
+                    this.sceneManager.camera.position.set(
+                        this.dungeon.playerStart.x + this.offsetX,
+                        1.2, // Height of the player
+                        this.dungeon.playerStart.y + this.offsetZ
+                    );
+                    controls = new PointerLockControls(this.sceneManager.camera, document.body);
+
+                    // Add click handler for pointer lock
+                    document.addEventListener('click', () => {
+                        if (!controls.isLocked) {
+                            controls.lock();
                         }
+                    });
 
-                        // Add lock if door is locked
-                        if (tile.obj.locked) {
-                            const lockGeometry = new THREE.BoxGeometry(0.2, 0.2, 0.2);
-                            const lockMaterial = new THREE.MeshPhongMaterial({ color: 0xffd700 });
-                            const lock = new THREE.Mesh(lockGeometry, lockMaterial);
-                            lock.position.set(
-                                posX + (tile.obj.facing === 'east' ? 0.2 : tile.obj.facing === 'west' ? -0.2 : 0),
-                                0.75,
-                                posZ + (tile.obj.facing === 'north' ? -0.2 : tile.obj.facing === 'south' ? 0.2 : 0)
-                            );
-                            this.sceneManager.scene.add(lock);
+                    // Add point light that follows the camera
+                    const pointLight = new THREE.PointLight(0xffffff, 1, 10);
+                    pointLight.position.copy(this.sceneManager.camera.position);
+                    this.sceneManager.scene.add(pointLight);
+                    this.updateLight = () => pointLight.position.copy(this.sceneManager.camera.position);
+
+                    // Setup movement
+                    const keys = { w: false, a: false, s: false, d: false };
+                    document.addEventListener('keydown', (e) => {
+                        if (keys.hasOwnProperty(e.key.toLowerCase())) {
+                            keys[e.key.toLowerCase()] = true;
                         }
+                    });
+                    document.addEventListener('keyup', (e) => {
+                        if (keys.hasOwnProperty(e.key.toLowerCase())) {
+                            keys[e.key.toLowerCase()] = false;
+                        }
+                    });
 
-                        this.sceneManager.scene.add(door);
-                        break;
+                    this.movePlayer = () => {
+                        if (controls.isLocked) {
+                            const moveSpeed = 0.1;
+                            const newPosition = new THREE.Vector3();
+                            newPosition.copy(this.sceneManager.camera.position);
 
-                    case 'floor':
-                        // Add items on floor
-                        if (tile.obj.item) {
-                            if (tile.obj.item instanceof Chest) {
-                                const chest = new THREE.Mesh(chestGeometry, chestMaterial);
-                                chest.position.set(posX, 0.2, posZ);
-                                this.sceneManager.scene.add(chest);
-
-                                // Add lock if chest is locked
-                                if (tile.obj.item.locked) {
-                                    const lockGeometry = new THREE.BoxGeometry(0.15, 0.15, 0.15);
-                                    const lockMaterial = new THREE.MeshPhongMaterial({ color: 0xffd700 });
-                                    const lock = new THREE.Mesh(lockGeometry, lockMaterial);
-                                    lock.position.set(posX, 0.3, posZ - 0.2);
-                                    this.sceneManager.scene.add(lock);
+                            if (keys.w) {
+                                controls.moveForward(moveSpeed);
+                                if(this.checkWallCollision(this.sceneManager.camera.position)) {
+                                    controls.moveForward(-moveSpeed);
+                                }
+                            }
+                            if (keys.s) {
+                                controls.moveForward(-moveSpeed);
+                                if(this.checkWallCollision(this.sceneManager.camera.position)) {
+                                    controls.moveForward(moveSpeed);
+                                }
+                            }
+                            if (keys.a) {
+                                controls.moveRight(-moveSpeed);
+                                if(this.checkWallCollision(this.sceneManager.camera.position)) {
+                                    controls.moveRight(moveSpeed);
+                                }
+                            }
+                            if (keys.d) {
+                                controls.moveRight(moveSpeed);
+                                if(this.checkWallCollision(this.sceneManager.camera.position)) {
+                                    controls.moveRight(-moveSpeed);
                                 }
                             }
                         }
+                    };
+                    break;
 
-                        // Add creatures
-                        if (tile.obj.creature) {
-                            const creature = new THREE.Mesh(creatureGeometry, creatureMaterial);
-                            creature.position.set(posX, 0.3, posZ);
-                            this.sceneManager.scene.add(creature);
+                case 'thirdperson':
+                    // Initialize OrbitControls first
+                    controls = new OrbitControls(this.sceneManager.camera, this.sceneManager.renderer.domElement);
 
-                            // Add sleep indicator if creature is asleep
-                            if (tile.obj.creature.asleep) {
-                                const sleepGeometry = new TextGeometry('z', {
-                                    size: 0.2,
-                                    height: 0.01
-                                });
-                                const sleepMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff });
-                                const sleepText = new THREE.Mesh(sleepGeometry, sleepMaterial);
-                                sleepText.position.set(posX + 0.2, 0.6, posZ - 0.1);
-                                sleepText.rotation.x = -Math.PI / 4;
-                                this.sceneManager.scene.add(sleepText);
-                            }
-                        }
-                        break;
+                    // Then set camera position
+                    this.sceneManager.camera.position.set(
+                        this.dungeon.playerStart.x + this.offsetX,
+                        10,
+                        this.dungeon.playerStart.y + this.offsetZ + 10
+                    );
 
-                    case 'stairs':
-                        // Create stairs using multiple blocks
-                        for (let i = 0; i < 4; i++) {
-                            const stairStep = new THREE.Mesh(
-                                new THREE.BoxGeometry(1, 0.2, 0.25),
-                                stairsMaterial
+                    // Now we can safely set the target
+                    controls.target.set(
+                        this.dungeon.playerStart.x + this.offsetX,
+                        0,
+                        this.dungeon.playerStart.y + this.offsetZ
+                    );
+
+                    // Additional controls setup
+                    controls.enableDamping = true;
+                    controls.dampingFactor = 0.05;
+                    controls.minDistance = 5;
+                    controls.maxDistance = 20;
+                    break;
+
+                default: // debug mode
+                    this.sceneManager.camera.position.set(
+                        cameraDistance,
+                        cameraDistance * 0.8,
+                        cameraDistance
+                    );
+                    controls = new OrbitControls(this.sceneManager.camera, this.sceneManager.renderer.domElement);
+                    controls.target.set(0, 0, 0);
+            }
+
+            // Render dungeon tiles
+            for (let x = 0; x < this.dungeon.width; x++) {
+                for (let z = 0; z < this.dungeon.height; z++) {
+                    const tile = this.dungeon.tiles[x][z];
+                    const posX = x + this.offsetX;
+                    const posZ = z + this.offsetZ;
+
+                    if (tile.type === 'wall') {
+                        const wall = new THREE.Mesh(
+                            new THREE.BoxGeometry(1.4, 1, 1.4), // Make walls slightly wider
+                            wallMaterial
+                        );
+                        wall.position.set(posX, 1, posZ);
+                        this.sceneManager.scene.add(wall);
+                    } else {
+                        // For corridors, make the floor slightly wider too
+                        const floor = new THREE.Mesh(
+                            new THREE.BoxGeometry(1.2, 0.1, 1.2), // Make floor slightly wider
+                            floorMaterial
+                        );
+                        floor.position.set(posX, 1, posZ);
+                        this.sceneManager.scene.add(floor);
+
+                        if (controlType === 'firstperson') {
+                            const roof = new THREE.Mesh(
+                                new THREE.BoxGeometry(1.2, 0.1, 1.2), // Make roof match floor
+                                roofMaterial
                             );
-                            stairStep.position.set(posX, 0.1 + (i * 0.2), posZ - 0.375 + (i * 0.25));
-                            this.sceneManager.scene.add(stairStep);
+                            roof.position.set(posX, 1.4, posZ);
+                            this.sceneManager.scene.add(roof);
                         }
-                        break;
+                    }
                 }
+            }
+
+            // Add minimap if not in debug mode
+            if (controlType !== 'debug') {
+                this.createMinimap();
+            }
+
+            // Animation loop
+            const animate = () => {
+                requestAnimationFrame(animate);
+                if (this.movePlayer) this.movePlayer();
+                if (this.updateLight) this.updateLight();
+                if (controls.update) controls.update();
+                this.sceneManager.renderer.render(this.sceneManager.scene, this.sceneManager.camera);
+                if (controlType !== 'debug') {
+                    this.updateMinimap();
+                }
+            };
+
+            // Load skybox after initial setup
+            const exrLoader = new EXRLoader();
+            const pmremGenerator = new THREE.PMREMGenerator(this.sceneManager.renderer);
+            pmremGenerator.compileEquirectangularShader();
+
+            const skyboxPath = worldType === 'underdark'
+                ? '../assets/textures/cave_hdr.exr'
+                : '../assets/textures/sky_hdr.exr';
+
+            exrLoader.load(skyboxPath, (texture) => {
+                const envMap = pmremGenerator.fromEquirectangular(texture).texture;
+                this.sceneManager.scene.environment = envMap;
+                this.sceneManager.scene.background = envMap;
+                texture.dispose();
+                pmremGenerator.dispose();
+            });
+
+            // Start animation
+            animate();
+            resolve();
+        });
+    }
+
+    createMinimap() {
+        // Create minimap canvas
+        const minimapSize = 150;
+        const minimap = document.createElement('canvas');
+        minimap.id = 'minimap';
+        minimap.width = minimapSize;
+        minimap.height = minimapSize;
+        minimap.style.position = 'absolute';
+        minimap.style.bottom = '80px';
+        minimap.style.right = '20px';
+        minimap.style.border = '2px solid #fff';
+        minimap.style.backgroundColor = 'rgba(0,0,0,0.5)';
+        document.body.appendChild(minimap);
+
+        // Initial render of minimap
+        this.updateMinimap();
+    }
+
+    updateMinimap() {
+        const minimap = document.getElementById('minimap');
+        if (!minimap) return;
+
+        const ctx = minimap.getContext('2d');
+        const tileSize = minimap.width / this.dungeon.width;
+
+        ctx.clearRect(0, 0, minimap.width, minimap.height);
+
+        // Draw dungeon tiles
+        for (let x = 0; x < this.dungeon.width; x++) {
+            for (let y = 0; y < this.dungeon.height; y++) {
+                const tile = this.dungeon.tiles[x][y];
+                ctx.fillStyle = tile.type === 'wall' ? '#fff' : '#333';
+                ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
             }
         }
 
-        // Start the render loop
-        this.sceneManager.updateScene();
+        // Draw player position and direction
+        const playerPos = this.sceneManager.camera.position;
+        // Use class properties for offset
+        const playerX = ((playerPos.x - this.offsetX) * tileSize);
+        const playerY = ((playerPos.z - this.offsetZ) * tileSize);
+
+        // Draw player dot
+        ctx.fillStyle = '#ff0000';
+        ctx.beginPath();
+        ctx.arc(playerX, playerY, tileSize/2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw direction indicator
+        const direction = new THREE.Vector3(0, 0, -1);
+        direction.applyQuaternion(this.sceneManager.camera.quaternion);
+
+        ctx.beginPath();
+        ctx.moveTo(playerX, playerY);
+        ctx.lineTo(
+            playerX + direction.x * tileSize * 1.5,
+            playerY + direction.z * tileSize * 1.5
+        );
+        ctx.strokeStyle = '#ff0000';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Add player position text
+        ctx.fillStyle = '#000000FF';
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'right';
+        ctx.fillText(
+            `X: ${Math.round(playerPos.x - this.offsetX)}, Z: ${Math.round(playerPos.z - this.offsetZ)}`,
+            minimap.width - 2,
+            minimap.height - 2
+        );
+    }
+
+    checkWallCollision(position) {
+        // Convert world position to tile coordinates
+        const tileX = Math.round(position.x - this.offsetX);
+        const tileZ = Math.round(position.z - this.offsetZ);
+
+        // Check surrounding tiles for walls (including diagonals)
+        for(let x = -1; x <= 1; x++) {
+            for(let z = -1; z <= 1; z++) {
+                const checkX = tileX + x;
+                const checkZ = tileZ + z;
+
+                // Check if tile is within bounds
+                if(checkX >= 0 && checkX < this.dungeon.width &&
+                   checkZ >= 0 && checkZ < this.dungeon.height) {
+                    const tile = this.dungeon.tiles[checkX][checkZ];
+                    if(tile.type === 'wall') {
+                        // Calculate distance to wall center
+                        const wallX = checkX + this.offsetX;
+                        const wallZ = checkZ + this.offsetZ;
+                        const dx = position.x - wallX;
+                        const dz = position.z - wallZ;
+                        const distance = Math.sqrt(dx * dx + dz * dz);
+
+                        // If too close to wall (0.7 units), prevent movement
+                        if(distance < 0.9) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    // Add this method to create debug controls
+    createDebugControls() {
+        const controlPanel = document.createElement('div');
+        controlPanel.id = 'debug-controls';
+        controlPanel.style.cssText = `
+            position: absolute;
+            bottom: 20px;
+            right: 200px;
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            z-index: 100;
+        `;
+
+        // View toggle buttons
+        const viewControls = document.createElement('div');
+        viewControls.innerHTML = `
+            <div>
+                <button id="view-2d">2D View</button>
+                <button id="view-3d">3D View</button>
+            </div>
+            <div id="3d-controls" style="display: none;">
+                <div style="margin-top: 10px;margin-bottom: 10px;">
+                    Environment:
+                    <button id="env-underdark">Underdark</button>
+                    <button id="env-outside">Outside</button>
+                </div>
+                <div>
+                    Controls:
+                    <button id="control-debug">Debug</button>
+                    <button id="control-first">First Person</button>
+                    <button id="control-third">Third Person</button>
+                </div>
+            </div>
+        `;
+
+        controlPanel.appendChild(viewControls);
+        document.body.appendChild(controlPanel);
+
+        // Add loading overlay
+        const loadingOverlay = document.createElement('div');
+        loadingOverlay.id = 'loading-overlay';
+        loadingOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        `;
+
+        const loadingContent = document.createElement('div');
+        loadingContent.style.cssText = `
+            text-align: center;
+            color: white;
+        `;
+        loadingContent.innerHTML = `
+            <div style="margin-bottom: 20px;" id="loading-text">Initializing 3D View...</div>
+            <div class="progress-bar">
+                <div class="progress"></div>
+            </div>
+        `;
+
+        loadingOverlay.appendChild(loadingContent);
+        document.body.appendChild(loadingOverlay);
+
+        // Add CSS for progress bar
+        const style = document.createElement('style');
+        style.textContent = `
+            .progress-bar {
+                width: 200px;
+                height: 20px;
+                background-color: #333;
+                border-radius: 10px;
+                overflow: hidden;
+            }
+            .progress {
+                width: 0%;
+                height: 100%;
+                background-color: #4CAF50;
+                transition: width 0.3s ease-in-out;
+            }
+            #loading-text {
+                font-size: 1.2em;
+                margin-bottom: 20px;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Event handlers
+        let currentEnv = 'outside';
+        let currentControl = 'debug';
+
+        document.getElementById('view-2d').addEventListener('click', () => {
+            this.render2D();
+            document.getElementById('3d-controls').style.display = 'none';
+        });
+
+        document.getElementById('view-3d').addEventListener('click', async () => {
+            document.getElementById('3d-controls').style.display = 'block';
+            await this.switchTo3D(currentEnv, currentControl);
+        });
+
+        document.getElementById('env-underdark').addEventListener('click', async () => {
+            currentEnv = 'underdark';
+            await this.switchTo3D(currentEnv, currentControl);
+        });
+
+        document.getElementById('env-outside').addEventListener('click', async () => {
+            currentEnv = 'outside';
+            await this.switchTo3D(currentEnv, currentControl);
+        });
+
+        document.getElementById('control-debug').addEventListener('click', async () => {
+            currentControl = 'debug';
+            await this.switchTo3D(currentEnv, currentControl);
+        });
+
+        document.getElementById('control-first').addEventListener('click', async () => {
+            currentControl = 'firstperson';
+            await this.switchTo3D(currentEnv, currentControl);
+        });
+
+        document.getElementById('control-third').addEventListener('click', async () => {
+            currentControl = 'thirdperson';
+            await this.switchTo3D(currentEnv, currentControl);
+        });
+    }
+
+    async switchTo3D(worldType, controlType) {
+        const overlay = document.getElementById('loading-overlay');
+        const progress = overlay.querySelector('.progress');
+        const loadingText = document.getElementById('loading-text');
+        overlay.style.display = 'flex';
+
+        try {
+            // Initial setup progress (20%)
+            loadingText.textContent = 'Initializing scene...';
+            progress.style.width = '20%';
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            // Create scene and prepare materials (40%)
+            this.sceneManager.createScene();
+            loadingText.textContent = 'Creating materials...';
+            progress.style.width = '40%';
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            // Load skybox (60-80%)
+            loadingText.textContent = 'Loading environment...';
+            const skyboxPath = worldType === 'underdark'
+                ? '../assets/textures/cave_hdr.exr'
+                : '../assets/textures/sky_hdr.exr';
+
+            await new Promise((resolve, reject) => {
+                const exrLoader = new EXRLoader();
+                const pmremGenerator = new THREE.PMREMGenerator(this.sceneManager.renderer);
+                pmremGenerator.compileEquirectangularShader();
+
+                progress.style.width = '60%';
+
+                exrLoader.load(
+                    skyboxPath,
+                    (texture) => {
+                        progress.style.width = '80%';
+                        const envMap = pmremGenerator.fromEquirectangular(texture).texture;
+                        this.sceneManager.scene.environment = envMap;
+                        this.sceneManager.scene.background = envMap;
+                        texture.dispose();
+                        pmremGenerator.dispose();
+                        resolve();
+                    },
+                    (xhr) => {
+                        if (xhr.lengthComputable) {
+                            const percentComplete = 60 + (xhr.loaded / xhr.total * 20);
+                            progress.style.width = `${percentComplete}%`;
+                        }
+                    },
+                    (error) => {
+                        console.error('Error loading skybox:', error);
+                        resolve(); // Continue even if skybox fails
+                    }
+                );
+            });
+
+            // Final render and setup (100%)
+            loadingText.textContent = 'Finalizing...';
+            progress.style.width = '100%';
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            // Render 3D view
+            await this.render3D(worldType, controlType);
+
+        } catch (error) {
+            console.error('Error during 3D initialization:', error);
+        } finally {
+            // Always hide the overlay when done
+            overlay.style.display = 'none';
+            progress.style.width = '0%';
+        }
     }
 
     /**

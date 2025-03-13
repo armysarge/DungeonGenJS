@@ -71,3 +71,21 @@ div.floor{
 .github-link svg {
     fill: white;
 }
+
+canvas[data-engine^="three.js"] {
+    width: 100% !important;
+    height: 100% !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+#minimap{
+    z-index: 1;
+}
